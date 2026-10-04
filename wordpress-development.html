@@ -1,0 +1,1684 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f7f4">
+  <meta name="description" content="Interactive WordPress development mind map">
+  <title>WordPress Development Mind Map</title>
+  <style>
+    :root{
+      --bg:#f6f6f3;
+      --panel:rgba(255,255,255,.92);
+      --surface:#fff;
+      --text:#171717;
+      --muted:#73736d;
+      --line:#deded8;
+      --shadow:0 18px 55px rgba(20,20,18,.10);
+      --toolbar-h:68px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden}
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;
+    }
+    button,input,select{font:inherit}
+    button,a{-webkit-tap-highlight-color:transparent}
+    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{
+      outline:3px solid rgba(23,23,23,.14);
+      outline-offset:2px;
+    }
+    .toolbar{
+      position:absolute;
+      z-index:30;
+      left:0;right:0;top:0;
+      min-height:var(--toolbar-h);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 14px;
+      background:rgba(246,246,243,.90);
+      border-bottom:1px solid var(--line);
+      backdrop-filter:blur(18px);
+    }
+    .back{
+      width:42px;height:42px;
+      display:grid;place-items:center;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--surface);
+      color:var(--text);
+      text-decoration:none;
+      flex:0 0 auto;
+    }
+    .back svg{width:18px;height:18px}
+    .title{
+      min-width:0;
+      margin-right:4px;
+    }
+    .title strong{
+      display:block;
+      font-size:14px;
+      line-height:1.2;
+      letter-spacing:-.02em;
+      white-space:nowrap;
+    }
+    .title span{
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      white-space:nowrap;
+    }
+    .searchbox{
+      position:relative;
+      width:min(360px,32vw);
+      min-width:180px;
+      margin-left:auto;
+    }
+    .searchbox svg{
+      position:absolute;
+      left:13px;
+      top:50%;
+      transform:translateY(-50%);
+      width:17px;height:17px;
+      color:#8d8d86;
+      pointer-events:none;
+    }
+    .search{
+      width:100%;
+      height:42px;
+      padding:0 13px 0 39px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--surface);
+      color:var(--text);
+      font-size:13px;
+    }
+    .search::placeholder{color:#999991}
+    .search-results{
+      position:absolute;
+      display:none;
+      top:48px;
+      left:0;right:0;
+      padding:6px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:var(--surface);
+      box-shadow:var(--shadow);
+      max-height:340px;
+      overflow:auto;
+    }
+    .search-results.open{display:block}
+    .result{
+      width:100%;
+      border:0;
+      background:transparent;
+      color:var(--text);
+      border-radius:10px;
+      padding:10px;
+      display:block;
+      text-align:left;
+      cursor:pointer;
+    }
+    .result:hover{background:#f2f2ee}
+    .result strong{
+      display:block;
+      font-size:12px;
+      line-height:1.3;
+    }
+    .result span{
+      display:block;
+      color:var(--muted);
+      font-size:10px;
+      margin-top:3px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .controls{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      flex:0 0 auto;
+    }
+    .control,.depth{
+      height:42px;
+      border:1px solid var(--line);
+      background:var(--surface);
+      color:var(--text);
+      border-radius:12px;
+    }
+    .control{
+      min-width:42px;
+      padding:0 12px;
+      display:inline-grid;
+      place-items:center;
+      cursor:pointer;
+      font-size:12px;
+      font-weight:600;
+    }
+    .control:hover{background:#f0f0ec}
+    .control svg{width:17px;height:17px}
+    .depth{
+      padding:0 9px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .canvas-wrap{
+      position:absolute;
+      inset:var(--toolbar-h) 0 0;
+      overflow:hidden;
+      background-color:var(--bg);
+      background-image:radial-gradient(circle,#d8d8d2 1px,transparent 1px);
+      background-size:24px 24px;
+      cursor:grab;
+      touch-action:none;
+      user-select:none;
+    }
+    .canvas-wrap.panning{cursor:grabbing}
+    #canvas{width:100%;height:100%;display:block;overflow:visible}
+    .link{
+      fill:none;
+      stroke-width:2;
+      stroke-linecap:round;
+      opacity:.42;
+      vector-effect:non-scaling-stroke;
+      pointer-events:none;
+    }
+    .node{cursor:grab}
+    .node.dragging{cursor:grabbing}
+    .node .node-card{
+      stroke-width:1.35;
+      vector-effect:non-scaling-stroke;
+      filter:drop-shadow(0 4px 8px rgba(20,20,18,.045));
+    }
+    .node.selected .node-card{
+      stroke-width:2.6;
+      filter:drop-shadow(0 8px 16px rgba(20,20,18,.12));
+    }
+    .node-label{
+      font-size:13px;
+      font-weight:650;
+      letter-spacing:-.015em;
+      pointer-events:none;
+    }
+    .node-sub{
+      font-size:9px;
+      font-weight:600;
+      pointer-events:none;
+      opacity:.62;
+    }
+    .branch-dot{pointer-events:none}
+    .toggle{cursor:pointer}
+    .toggle circle{
+      stroke-width:1.2;
+      vector-effect:non-scaling-stroke;
+    }
+    .toggle text{
+      font-size:12px;
+      font-weight:700;
+      text-anchor:middle;
+      dominant-baseline:central;
+      pointer-events:none;
+    }
+    .toggle:hover circle{stroke-width:2}
+    .selection-ring{
+      fill:none;
+      stroke:#161616;
+      stroke-width:1.5;
+      stroke-dasharray:5 4;
+      vector-effect:non-scaling-stroke;
+      pointer-events:none;
+      opacity:.35;
+    }
+    .hint{
+      position:absolute;
+      z-index:15;
+      left:14px;
+      bottom:14px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:9px 11px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(255,255,255,.90);
+      color:var(--muted);
+      font-size:10px;
+      backdrop-filter:blur(12px);
+      pointer-events:none;
+    }
+    .zoom-label{
+      min-width:48px;
+      text-align:center;
+      color:var(--muted);
+      font-size:11px;
+    }
+    .minimap{
+      position:absolute;
+      z-index:15;
+      right:14px;
+      bottom:14px;
+      width:190px;
+      height:128px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,255,255,.90);
+      box-shadow:0 8px 28px rgba(20,20,18,.07);
+      overflow:hidden;
+      backdrop-filter:blur(12px);
+    }
+    #minimap{width:100%;height:100%;display:block}
+    .panel{
+      position:absolute;
+      z-index:25;
+      top:calc(var(--toolbar-h) + 12px);
+      right:12px;
+      width:320px;
+      max-height:calc(100% - var(--toolbar-h) - 24px);
+      overflow:auto;
+      transform:translateX(calc(100% + 28px));
+      transition:transform .2s ease;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:var(--panel);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(18px);
+    }
+    .panel.open{transform:translateX(0)}
+    .panel-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:17px 17px 0;
+    }
+    .panel-color{
+      width:10px;height:10px;
+      border-radius:50%;
+      margin-top:4px;
+      flex:0 0 auto;
+    }
+    .panel-title-wrap{flex:1;min-width:0}
+    .panel-title{
+      margin:0;
+      font-size:17px;
+      line-height:1.25;
+      letter-spacing:-.025em;
+    }
+    .panel-depth{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-weight:700;
+    }
+    .close{
+      width:34px;height:34px;
+      border:0;
+      border-radius:10px;
+      background:#f0f0ec;
+      color:var(--text);
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+    .panel-body{padding:14px 17px 17px}
+    .description{
+      margin:0;
+      color:#5e5e59;
+      font-size:12px;
+      line-height:1.65;
+    }
+    .path{
+      margin-top:14px;
+      padding-top:13px;
+      border-top:1px solid var(--line);
+      color:var(--muted);
+      font-size:10px;
+      line-height:1.55;
+    }
+    .panel-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:7px;
+      margin-top:14px;
+    }
+    .panel-actions button{
+      min-height:38px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      background:var(--surface);
+      color:var(--text);
+      font-size:11px;
+      font-weight:650;
+      cursor:pointer;
+    }
+    .panel-actions button:hover{background:#f0f0ec}
+    .children{
+      margin-top:16px;
+      padding-top:13px;
+      border-top:1px solid var(--line);
+    }
+    .children-label{
+      color:var(--muted);
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.09em;
+      font-weight:800;
+      margin-bottom:8px;
+    }
+    .child-btn{
+      width:100%;
+      border:0;
+      background:transparent;
+      border-radius:9px;
+      text-align:left;
+      padding:8px;
+      color:var(--text);
+      font-size:11px;
+      cursor:pointer;
+    }
+    .child-btn:hover{background:#f0f0ec}
+    .child-btn + .child-btn{margin-top:2px}
+    .legend{
+      position:absolute;
+      z-index:14;
+      left:14px;
+      top:14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      max-width:min(680px,calc(100% - 250px));
+      pointer-events:none;
+    }
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      padding:5px 7px;
+      border:1px solid rgba(0,0,0,.06);
+      border-radius:999px;
+      background:rgba(255,255,255,.82);
+      color:#666660;
+      font-size:9px;
+      backdrop-filter:blur(8px);
+    }
+    .legend-item i{
+      width:7px;height:7px;border-radius:50%;
+      display:block;
+    }
+    @media(max-width:920px){
+      :root{--toolbar-h:120px}
+      .toolbar{flex-wrap:wrap;align-content:center}
+      .title{margin-right:auto}
+      .searchbox{order:3;width:100%;min-width:0;margin-left:0}
+      .controls{margin-left:auto}
+      .minimap{width:150px;height:104px}
+      .legend{max-width:calc(100% - 180px)}
+    }
+    @media(max-width:620px){
+      :root{--toolbar-h:116px}
+      .title span{display:none}
+      .title strong{font-size:13px}
+      .controls .text-control{display:none}
+      .depth{max-width:78px}
+      .panel{
+        top:auto;
+        right:10px;left:10px;bottom:10px;
+        width:auto;
+        max-height:48%;
+        transform:translateY(calc(100% + 20px));
+      }
+      .panel.open{transform:translateY(0)}
+      .minimap{display:none}
+      .legend{display:none}
+      .hint{right:14px;justify-content:center}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .panel{transition:none}
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <a class="back" href="./" aria-label="Back to mind map directory">
+      <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+
+    <div class="title">
+      <strong>WordPress Development</strong>
+      <span>Interactive mind map</span>
+    </div>
+
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <input id="search" class="search" type="search" autocomplete="off" placeholder="Find any WordPress topic...">
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <div class="controls">
+      <select id="depthSelect" class="depth" aria-label="Expand to depth">
+        <option value="1">Depth 1</option>
+        <option value="2">Depth 2</option>
+        <option value="3">Depth 3</option>
+        <option value="4">Depth 4</option>
+        <option value="5">Depth 5</option>
+        <option value="6">Depth 6</option>
+        <option value="7">Depth 7</option>
+        <option value="8">Depth 8</option>
+        <option value="9">Depth 9</option>
+        <option value="10">Depth 10</option>
+      </select>
+      <button id="applyDepth" class="control text-control" type="button">Open</button>
+      <button id="collapseAll" class="control text-control" type="button">Collapse</button>
+      <button id="zoomOut" class="control" type="button" aria-label="Zoom out">−</button>
+      <span id="zoomLabel" class="zoom-label">100%</span>
+      <button id="zoomIn" class="control" type="button" aria-label="Zoom in">+</button>
+      <button id="fit" class="control" type="button" aria-label="Fit mind map">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="resetLayout" class="control" type="button" aria-label="Reset node positions">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.7 8A8 8 0 1 1 4 15M4 4v4h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="stage" class="canvas-wrap">
+    <div id="legend" class="legend"></div>
+    <svg id="canvas" aria-label="Interactive WordPress development mind map">
+      <g id="viewport">
+        <g id="links"></g>
+        <g id="nodes"></g>
+      </g>
+    </svg>
+
+    <div class="hint">Drag nodes · Drag canvas · Wheel to zoom · Double-click a node to open or close</div>
+
+    <div class="minimap" aria-hidden="true">
+      <svg id="minimap"></svg>
+    </div>
+  </div>
+
+  <aside id="panel" class="panel" aria-live="polite">
+    <div class="panel-head">
+      <div id="panelColor" class="panel-color"></div>
+      <div class="panel-title-wrap">
+        <h2 id="panelTitle" class="panel-title"></h2>
+        <div id="panelDepth" class="panel-depth"></div>
+      </div>
+      <button id="closePanel" class="close" type="button" aria-label="Close details">×</button>
+    </div>
+    <div class="panel-body">
+      <p id="panelDescription" class="description"></p>
+      <div id="panelPath" class="path"></div>
+      <div class="panel-actions">
+        <button id="toggleSelected" type="button">Open branch</button>
+        <button id="focusSelected" type="button">Focus</button>
+      </div>
+      <div id="childrenBox" class="children"></div>
+    </div>
+  </aside>
+
+  <script>
+    function N(name, description, children) {
+      return {name:name, description:description || "", children:children || []};
+    }
+
+    var TREE = N("WordPress Development","A complete development map from planning and design through code, deployment, optimization and ongoing operations.",[
+      N("Planning & Architecture","Define the site, users, content model and technical direction before implementation.",[
+        N("Discovery","Understand what the site must achieve.",[
+          N("Business Goals","Revenue, leads, publishing, membership, support or internal operations."),
+          N("User Roles","Visitors, customers, editors, authors, managers and administrators."),
+          N("Functional Requirements","Forms, search, memberships, commerce, multilingual, booking and integrations."),
+          N("Nonfunctional Requirements","Performance, accessibility, security, maintainability and scalability.")
+        ]),
+        N("Information Architecture","Plan how information is organized and found.",[
+          N("Sitemap","Primary pages and hierarchy."),
+          N("Navigation","Primary, secondary, footer and contextual navigation."),
+          N("Content Models","Define reusable content structures.",[
+            N("Pages"),
+            N("Posts"),
+            N("Custom Post Types","Structured content beyond pages and posts.",[
+              N("Taxonomies","Categories, tags and custom classification."),
+              N("Custom Fields","Metadata attached to posts, users, terms or options.")
+            ])
+          ])
+        ]),
+        N("Technical Architecture","Choose how the WordPress solution will be built.",[
+          N("Theme Strategy","Block theme, classic theme, starter theme or builder."),
+          N("Plugin Strategy","Core plugins, custom plugins and integration boundaries."),
+          N("Environment Strategy","Local, staging and production."),
+          N("URL Strategy","Permalinks, taxonomies, archives and migration rules.")
+        ])
+      ]),
+
+      N("Design & UX","Translate requirements into an interface system that stays consistent across the site.",[
+        N("Design System","Reusable visual rules.",[
+          N("Typography","Type scale, line height, weights and readable widths."),
+          N("Color System","Brand, semantic states, contrast and accessibility."),
+          N("Spacing","Consistent margins, padding and layout rhythm."),
+          N("Components","Buttons, cards, forms, alerts, tabs and navigation.")
+        ]),
+        N("Responsive UX","Design across screen sizes and input methods.",[
+          N("Mobile First"),
+          N("Breakpoints"),
+          N("Touch Targets"),
+          N("Responsive Images")
+        ]),
+        N("Interaction Design","States and behaviors for interactive elements.",[
+          N("Hover & Focus"),
+          N("Loading States"),
+          N("Validation States"),
+          N("Empty States")
+        ])
+      ]),
+
+      N("Frontend","Build the browser-facing experience around semantic markup, CSS and JavaScript.",[
+        N("HTML","Semantic structure and document meaning.",[
+          N("Landmarks"),
+          N("Heading Hierarchy"),
+          N("Forms"),
+          N("Media")
+        ]),
+        N("CSS","Layout and presentation.",[
+          N("Cascade & Specificity"),
+          N("Flexbox"),
+          N("Grid"),
+          N("Custom Properties"),
+          N("Responsive CSS")
+        ]),
+        N("JavaScript","Client-side interactions and browser behavior.",[
+          N("DOM Events"),
+          N("Fetch & AJAX"),
+          N("State"),
+          N("Progressive Enhancement")
+        ]),
+        N("Page Builders","Visual implementation workflows.",[
+          N("Elementor","Containers, templates, widgets, responsive controls and theme builder."),
+          N("Gutenberg","Core blocks, patterns and site editor."),
+          N("Bricks / Others","Alternative visual builders and component workflows.")
+        ])
+      ]),
+
+      N("WordPress Core","Understand the platform runtime and its public APIs.",[
+        N("Request Lifecycle","How a request moves through WordPress.",[
+          N("Bootstrap"),
+          N("Query Parsing"),
+          N("Main Query"),
+          N("Template Loading")
+        ]),
+        N("Template Hierarchy","How WordPress selects templates.",[
+          N("Front Page"),
+          N("Single"),
+          N("Archive"),
+          N("Taxonomy"),
+          N("Search"),
+          N("404")
+        ]),
+        N("Hooks","Extend behavior without editing core.",[
+          N("Actions"),
+          N("Filters")
+        ]),
+        N("Core APIs","Use WordPress-provided application interfaces.",[
+          N("Options API"),
+          N("Settings API"),
+          N("Metadata API"),
+          N("Filesystem API"),
+          N("HTTP API"),
+          N("Rewrite API")
+        ])
+      ]),
+
+      N("Theme Development","Control templates, presentation and theme-level functionality.",[
+        N("Classic Themes","PHP template architecture.",[
+          N("style.css"),
+          N("functions.php"),
+          N("Template Files"),
+          N("Template Parts"),
+          N("Enqueue Assets")
+        ]),
+        N("Block Themes","Site Editor based architecture.",[
+          N("theme.json"),
+          N("Templates"),
+          N("Template Parts"),
+          N("Patterns"),
+          N("Global Styles")
+        ]),
+        N("Theme Features","WordPress theme support and UI integration.",[
+          N("Menus"),
+          N("Post Thumbnails"),
+          N("Custom Logo"),
+          N("Editor Styles"),
+          N("Responsive Embeds")
+        ])
+      ]),
+
+      N("Plugin Development","Build reusable business logic, integrations and custom WordPress behavior.",[
+        N("Plugin Architecture","Organize a maintainable plugin.",[
+          N("Bootstrap","Load the plugin safely and define its boundaries."),
+          N("Event System","Connect code to WordPress execution points.",[
+            N("Actions","Run code when WordPress fires an event.",[
+              N("Registration","Register callbacks with add_action.",[
+                N("Callback Design","Keep callbacks small and intentional.",[
+                  N("Dependency Handling","Pass or resolve required services.",[
+                    N("Validation","Validate data before processing.",[
+                      N("Error Handling","Return or surface failures safely.",[
+                        N("Logging","Capture useful diagnostics without exposing secrets.")
+                      ])
+                    ])
+                  ])
+                ])
+              ])
+            ]),
+            N("Filters","Receive a value, modify it and return it.")
+          ]),
+          N("OOP Structure","Classes, namespaces, services and dependency boundaries."),
+          N("Activation & Deactivation","Setup and cleanup lifecycle events."),
+          N("Uninstall","Remove plugin-owned data intentionally.")
+        ]),
+        N("Admin Experience","Create safe administration interfaces.",[
+          N("Settings Pages"),
+          N("Meta Boxes"),
+          N("List Tables"),
+          N("Admin Notices")
+        ]),
+        N("Data Access","Store and retrieve plugin data.",[
+          N("Options"),
+          N("Post Meta"),
+          N("User Meta"),
+          N("Custom Tables","Use when relational or high-volume data needs it.",[
+            N("Schema"),
+            N("Migrations"),
+            N("Indexes"),
+            N("Queries")
+          ])
+        ]),
+        N("Gutenberg Extensions","Extend the block editor.",[
+          N("Custom Blocks"),
+          N("Block Variations"),
+          N("Inspector Controls"),
+          N("Dynamic Rendering")
+        ]),
+        N("WP-CLI","Command-line automation.",[
+          N("Custom Commands"),
+          N("Data Imports"),
+          N("Maintenance Tasks")
+        ])
+      ]),
+
+      N("Data & Content","Model, query, edit and migrate structured WordPress content.",[
+        N("Post Types","Built-in and custom post types.",[
+          N("Supports"),
+          N("Capabilities"),
+          N("Archives"),
+          N("Rewrite Rules")
+        ]),
+        N("Taxonomies","Classify and relate content.",[
+          N("Hierarchical"),
+          N("Nonhierarchical"),
+          N("Term Meta")
+        ]),
+        N("Custom Fields","Store structured metadata.",[
+          N("Native Meta"),
+          N("ACF","Field groups, repeaters, relationships and options pages."),
+          N("Validation"),
+          N("Sanitization")
+        ]),
+        N("Queries","Retrieve content efficiently.",[
+          N("WP_Query"),
+          N("Meta Query"),
+          N("Tax Query"),
+          N("User Query"),
+          N("Direct SQL","Use carefully when core query APIs are insufficient.")
+        ]),
+        N("Migration","Move content without losing relationships.",[
+          N("Imports"),
+          N("Exports"),
+          N("Search Replace"),
+          N("Media Migration"),
+          N("Redirect Mapping")
+        ])
+      ]),
+
+      N("APIs & Integrations","Connect WordPress with internal and external systems.",[
+        N("REST API","Expose or consume structured HTTP endpoints.",[
+          N("Routes"),
+          N("Controllers"),
+          N("Authentication"),
+          N("Permissions"),
+          N("Schema"),
+          N("Pagination")
+        ]),
+        N("Webhooks","Send events to other systems.",[
+          N("Signing"),
+          N("Retries"),
+          N("Idempotency")
+        ]),
+        N("Third-party APIs","Integrate CRM, payments, ERP, marketing and SaaS tools.",[
+          N("OAuth"),
+          N("API Keys"),
+          N("Rate Limits"),
+          N("Error Recovery")
+        ]),
+        N("Automation","Connect workflows across tools.",[
+          N("Zapier"),
+          N("Pabbly"),
+          N("Power Automate"),
+          N("Custom Queues")
+        ])
+      ]),
+
+      N("Security","Reduce attack surface and handle data safely.",[
+        N("Input Security","Never trust incoming data.",[
+          N("Validation"),
+          N("Sanitization"),
+          N("Escaping")
+        ]),
+        N("Authorization","Check whether a user can perform an action.",[
+          N("Roles"),
+          N("Capabilities"),
+          N("Current User Checks")
+        ]),
+        N("Request Protection","Protect state-changing actions.",[
+          N("Nonces"),
+          N("CSRF Protection"),
+          N("REST Permissions")
+        ]),
+        N("Operational Security","Protect the running site.",[
+          N("Updates"),
+          N("Least Privilege"),
+          N("Backups"),
+          N("WAF"),
+          N("Malware Monitoring"),
+          N("Secrets Management")
+        ])
+      ]),
+
+      N("Performance","Keep the site responsive under real traffic and real content.",[
+        N("Frontend Performance","Reduce browser work and transfer size.",[
+          N("Images","Formats, dimensions, lazy loading and responsive sources."),
+          N("CSS","Critical CSS, unused styles and delivery."),
+          N("JavaScript","Execution cost, defer and code splitting."),
+          N("Fonts","Formats, preload and rendering strategy.")
+        ]),
+        N("Caching","Avoid repeated expensive work.",[
+          N("Page Cache"),
+          N("Object Cache"),
+          N("Browser Cache"),
+          N("CDN")
+        ]),
+        N("Database","Keep queries and stored data efficient.",[
+          N("Query Analysis"),
+          N("Indexes"),
+          N("Autoloaded Options"),
+          N("Cleanup")
+        ]),
+        N("Core Web Vitals","Measure real user experience.",[
+          N("LCP"),
+          N("INP"),
+          N("CLS")
+        ])
+      ]),
+
+      N("SEO & Accessibility","Make pages discoverable, understandable and usable.",[
+        N("Technical SEO","Search engine access and site signals.",[
+          N("Crawlability"),
+          N("Indexability"),
+          N("Canonical URLs"),
+          N("XML Sitemaps"),
+          N("Robots Rules"),
+          N("Structured Data")
+        ]),
+        N("On-page SEO","Page-level relevance and information structure.",[
+          N("Titles"),
+          N("Meta Descriptions"),
+          N("Headings"),
+          N("Internal Links"),
+          N("Image Alt Text")
+        ]),
+        N("Accessibility","Build for keyboard, screen reader and low-vision users.",[
+          N("Semantic HTML"),
+          N("Keyboard Navigation"),
+          N("Focus Management"),
+          N("Color Contrast"),
+          N("ARIA","Use only when native semantics are not enough.")
+        ])
+      ]),
+
+      N("DevOps & Hosting","Move code safely from local development to production.",[
+        N("Local Development","Reproducible developer environments.",[
+          N("LocalWP"),
+          N("Docker"),
+          N("wp-env")
+        ]),
+        N("Version Control","Track code and collaborate safely.",[
+          N("Git"),
+          N("Branches"),
+          N("Pull Requests"),
+          N("Release Tags")
+        ]),
+        N("Environments","Separate development from live traffic.",[
+          N("Local"),
+          N("Staging"),
+          N("Production")
+        ]),
+        N("Deployment","Ship code and database changes.",[
+          N("CI/CD"),
+          N("SFTP / SSH"),
+          N("WP-CLI"),
+          N("Database Migration"),
+          N("Rollback")
+        ]),
+        N("Hosting","Choose and operate infrastructure.",[
+          N("Shared"),
+          N("Managed WordPress"),
+          N("VPS"),
+          N("Containers"),
+          N("CDN & DNS"),
+          N("SSL")
+        ])
+      ]),
+
+      N("Testing & Maintenance","Verify changes and keep WordPress healthy after launch.",[
+        N("Testing","Catch failures before users do.",[
+          N("Unit Testing"),
+          N("Integration Testing"),
+          N("Browser Testing"),
+          N("Regression Testing"),
+          N("Accessibility Testing"),
+          N("Performance Testing")
+        ]),
+        N("Debugging","Find and isolate problems.",[
+          N("WP_DEBUG"),
+          N("Debug Log"),
+          N("Query Monitor"),
+          N("Browser DevTools"),
+          N("Server Logs")
+        ]),
+        N("Maintenance","Operate the site over time.",[
+          N("Core Updates"),
+          N("Plugin Updates"),
+          N("Theme Updates"),
+          N("Backups"),
+          N("Uptime Monitoring"),
+          N("Security Monitoring"),
+          N("Database Maintenance")
+        ]),
+        N("Handover","Make the site maintainable by the next person.",[
+          N("Documentation"),
+          N("Credentials & Access"),
+          N("Change Log"),
+          N("Recovery Procedure")
+        ])
+      ])
+    ]);
+
+    var COLORS = [
+      "#3b82f6","#8b5cf6","#14b8a6","#f97316",
+      "#ec4899","#06b6d4","#ef4444","#6366f1",
+      "#d97706","#10b981","#7c3aed","#64748b"
+    ];
+
+    var MAX_DEPTH = 10;
+    var H_GAP = 255;
+    var V_GAP = 74;
+    var expanded = new Set();
+    var positions = readJSON("wp-mindmap:positions",{});
+    var selected = null;
+    var nodesById = new Map();
+    var allNodes = [];
+    var currentVisible = [];
+    var currentLinks = [];
+    var branchMeta = [];
+    var transform = {x:0,y:0,scale:1};
+    var dragNode = null;
+    var panState = null;
+    var dragMoved = false;
+
+    var stage = document.getElementById("stage");
+    var canvas = document.getElementById("canvas");
+    var viewport = document.getElementById("viewport");
+    var linksLayer = document.getElementById("links");
+    var nodesLayer = document.getElementById("nodes");
+    var search = document.getElementById("search");
+    var searchResults = document.getElementById("searchResults");
+    var zoomLabel = document.getElementById("zoomLabel");
+    var panel = document.getElementById("panel");
+    var panelTitle = document.getElementById("panelTitle");
+    var panelDepth = document.getElementById("panelDepth");
+    var panelDescription = document.getElementById("panelDescription");
+    var panelPath = document.getElementById("panelPath");
+    var panelColor = document.getElementById("panelColor");
+    var childrenBox = document.getElementById("childrenBox");
+    var toggleSelected = document.getElementById("toggleSelected");
+    var minimap = document.getElementById("minimap");
+    var legend = document.getElementById("legend");
+    var NS = "http://www.w3.org/2000/svg";
+
+    function readJSON(key,fallback){
+      try{
+        var value = JSON.parse(localStorage.getItem(key));
+        return value || fallback;
+      }catch(e){return fallback}
+    }
+
+    function writeJSON(key,value){
+      try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}
+    }
+
+    function slug(value){
+      return value.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    }
+
+    function prepare(node,parent,depth,branchIndex,path){
+      node.parent = parent || null;
+      node.depth = depth;
+      node.path = path ? path + " / " + node.name : node.name;
+      node.id = (parent ? parent.id + "-" : "") + slug(node.name);
+      if(depth === 1) branchIndex = parent.children.indexOf(node);
+      node.branchIndex = depth === 0 ? -1 : branchIndex;
+      node.color = depth === 0 ? "#171717" : COLORS[branchIndex % COLORS.length];
+      nodesById.set(node.id,node);
+      allNodes.push(node);
+      (node.children || []).forEach(function(child){
+        prepare(child,node,depth+1,branchIndex,node.path);
+      });
+    }
+
+    prepare(TREE,null,0,-1,"");
+    expanded.add(TREE.id);
+
+    TREE.children.forEach(function(branch,index){
+      branchMeta.push({name:branch.name,color:COLORS[index % COLORS.length]});
+    });
+
+    function renderLegend(){
+      legend.innerHTML = branchMeta.map(function(item){
+        return '<span class="legend-item"><i style="background:'+item.color+'"></i>'+escapeHTML(item.name)+'</span>';
+      }).join("");
+    }
+
+    function escapeHTML(value){
+      return String(value || "").replace(/[&<>"']/g,function(char){
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[char];
+      });
+    }
+
+    function visibleTree(){
+      var nodes = [];
+      var links = [];
+
+      function walk(node){
+        nodes.push(node);
+        if(node.children && node.children.length && expanded.has(node.id)){
+          node.children.forEach(function(child){
+            links.push({source:node,target:child});
+            walk(child);
+          });
+        }
+      }
+
+      walk(TREE);
+      return {nodes:nodes,links:links};
+    }
+
+    function sideForBranch(branch){
+      var index = TREE.children.indexOf(branch);
+      return index % 2 === 0 ? 1 : -1;
+    }
+
+    function topBranch(node){
+      var current = node;
+      while(current.parent && current.parent !== TREE) current = current.parent;
+      return current.parent === TREE ? current : null;
+    }
+
+    function hasVisibleChildren(node){
+      return node.children && node.children.length && expanded.has(node.id);
+    }
+
+    function layoutVisible(nodes){
+      var right = [];
+      var left = [];
+
+      TREE.children.forEach(function(branch){
+        if(!nodesById.has(branch.id)) return;
+        (sideForBranch(branch) > 0 ? right : left).push(branch);
+      });
+
+      function layoutSide(branches,side){
+        var cursor = 0;
+
+        function assign(node){
+          var visibleChildren = hasVisibleChildren(node) ? node.children : [];
+          if(!visibleChildren.length){
+            node.baseY = cursor * V_GAP;
+            cursor += 1;
+          }else{
+            visibleChildren.forEach(assign);
+            node.baseY = (visibleChildren[0].baseY + visibleChildren[visibleChildren.length-1].baseY) / 2;
+          }
+          node.baseX = side * node.depth * H_GAP;
+        }
+
+        branches.forEach(function(branch){
+          assign(branch);
+          cursor += .55;
+        });
+
+        if(!branches.length) return;
+
+        var min = Infinity;
+        var max = -Infinity;
+
+        branches.forEach(function(branch){
+          function scan(node){
+            min = Math.min(min,node.baseY);
+            max = Math.max(max,node.baseY);
+            if(hasVisibleChildren(node)) node.children.forEach(scan);
+          }
+          scan(branch);
+        });
+
+        var center = (min + max) / 2;
+
+        branches.forEach(function(branch){
+          function normalize(node){
+            node.baseY -= center;
+            if(hasVisibleChildren(node)) node.children.forEach(normalize);
+          }
+          normalize(branch);
+        });
+      }
+
+      layoutSide(right,1);
+      layoutSide(left,-1);
+
+      TREE.baseX = 0;
+      TREE.baseY = 0;
+
+      nodes.forEach(function(node){
+        var saved = positions[node.id] || {x:0,y:0};
+        node.x = node.baseX + saved.x;
+        node.y = node.baseY + saved.y;
+      });
+    }
+
+    function nodeSize(node){
+      if(node.depth === 0) return {w:230,h:64};
+      var lines = splitLabel(node.name,node.depth === 1 ? 22 : 24);
+      return {w:node.depth === 1 ? 205 : 188,h:lines.length > 1 ? 60 : 50};
+    }
+
+    function splitLabel(text,max){
+      if(text.length <= max) return [text];
+      var words = text.split(" ");
+      var lines = [""];
+      words.forEach(function(word){
+        var current = lines[lines.length-1];
+        if((current + " " + word).trim().length <= max || lines.length >= 2){
+          lines[lines.length-1] = (current + " " + word).trim();
+        }else{
+          lines.push(word);
+        }
+      });
+      return lines.slice(0,2);
+    }
+
+    function tint(hex,alpha){
+      var value = hex.replace("#","");
+      var r = parseInt(value.slice(0,2),16);
+      var g = parseInt(value.slice(2,4),16);
+      var b = parseInt(value.slice(4,6),16);
+      return "rgba("+r+","+g+","+b+","+alpha+")";
+    }
+
+    function createSVG(tag,attrs){
+      var el = document.createElementNS(NS,tag);
+      Object.keys(attrs || {}).forEach(function(key){
+        el.setAttribute(key,attrs[key]);
+      });
+      return el;
+    }
+
+    function render(){
+      var visible = visibleTree();
+      currentVisible = visible.nodes;
+      currentLinks = visible.links;
+      layoutVisible(currentVisible);
+
+      linksLayer.replaceChildren();
+      nodesLayer.replaceChildren();
+
+      currentLinks.forEach(function(link){
+        var path = createSVG("path",{"class":"link","stroke":link.target.color,"data-link":link.target.id});
+        linksLayer.appendChild(path);
+      });
+
+      currentVisible.forEach(function(node){
+        var size = nodeSize(node);
+        node.w = size.w;
+        node.h = size.h;
+
+        var g = createSVG("g",{"class":"node"+(selected === node ? " selected" : ""),"data-id":node.id,"tabindex":"0","role":"button"});
+        var fill = node.depth === 0 ? "#171717" : (node.depth === 1 ? tint(node.color,.13) : "#ffffff");
+        var stroke = node.depth === 0 ? "#171717" : tint(node.color,node.depth === 1 ? .72 : .44);
+
+        var rect = createSVG("rect",{
+          "class":"node-card",
+          "x":-size.w/2,
+          "y":-size.h/2,
+          "width":size.w,
+          "height":size.h,
+          "rx":node.depth === 0 ? 18 : 14,
+          "fill":fill,
+          "stroke":stroke
+        });
+        g.appendChild(rect);
+
+        if(node.depth > 0){
+          var bar = createSVG("rect",{
+            "x":-size.w/2,
+            "y":-size.h/2+8,
+            "width":4,
+            "height":size.h-16,
+            "rx":2,
+            "fill":node.color,
+            "class":"branch-dot"
+          });
+          g.appendChild(bar);
+        }
+
+        var lines = splitLabel(node.name,node.depth === 1 ? 22 : 24);
+        var textColor = node.depth === 0 ? "#ffffff" : "#1b1b1b";
+
+        lines.forEach(function(line,index){
+          var y = lines.length === 1 ? 4 : (index === 0 ? -4 : 13);
+          var text = createSVG("text",{
+            "class":"node-label",
+            "x":node.depth === 0 ? 0 : -size.w/2+17,
+            "y":y,
+            "fill":textColor,
+            "text-anchor":node.depth === 0 ? "middle" : "start"
+          });
+          text.textContent = line;
+          g.appendChild(text);
+        });
+
+        if(node.children && node.children.length){
+          var side = node.depth === 0 ? 1 : sideForBranch(topBranch(node) || TREE.children[0]);
+          var tx = node.depth === 0 ? size.w/2+17 : side*(size.w/2+17);
+          var toggle = createSVG("g",{
+            "class":"toggle",
+            "data-toggle":node.id,
+            "transform":"translate("+tx+" 0)"
+          });
+          var tc = createSVG("circle",{
+            "r":12,
+            "fill":"#fff",
+            "stroke":node.depth === 0 ? "#9a9a95" : node.color
+          });
+          var tt = createSVG("text",{
+            "x":0,
+            "y":0,
+            "fill":node.depth === 0 ? "#1b1b1b" : node.color
+          });
+          tt.textContent = expanded.has(node.id) ? "−" : "+";
+          toggle.appendChild(tc);
+          toggle.appendChild(tt);
+          g.appendChild(toggle);
+        }
+
+        g.addEventListener("pointerdown",function(event){
+          if(event.target.closest && event.target.closest(".toggle")) return;
+          startNodeDrag(event,node,g);
+        });
+
+        g.addEventListener("click",function(event){
+          if(dragMoved) return;
+          if(event.target.closest && event.target.closest(".toggle")) return;
+          selectNode(node);
+        });
+
+        g.addEventListener("dblclick",function(event){
+          event.stopPropagation();
+          toggleNode(node);
+        });
+
+        g.addEventListener("keydown",function(event){
+          if(event.key === "Enter"){
+            event.preventDefault();
+            selectNode(node);
+          }
+          if(event.key === " " && node.children && node.children.length){
+            event.preventDefault();
+            toggleNode(node);
+          }
+        });
+
+        nodesLayer.appendChild(g);
+      });
+
+      nodesLayer.querySelectorAll(".toggle").forEach(function(toggle){
+        toggle.addEventListener("pointerdown",function(event){event.stopPropagation()});
+        toggle.addEventListener("click",function(event){
+          event.stopPropagation();
+          var node = nodesById.get(toggle.getAttribute("data-toggle"));
+          toggleNode(node);
+        });
+      });
+
+      updateGeometry();
+      updatePanel();
+      updateMinimap();
+    }
+
+    function updateGeometry(){
+      currentVisible.forEach(function(node){
+        var saved = positions[node.id] || {x:0,y:0};
+        node.x = node.baseX + saved.x;
+        node.y = node.baseY + saved.y;
+        var element = nodesLayer.querySelector('[data-id="'+CSS.escape(node.id)+'"]');
+        if(element) element.setAttribute("transform","translate("+node.x+" "+node.y+")");
+      });
+
+      currentLinks.forEach(function(link){
+        var path = linksLayer.querySelector('[data-link="'+CSS.escape(link.target.id)+'"]');
+        if(path) path.setAttribute("d",linkPath(link.source,link.target));
+      });
+
+      updateMinimap();
+    }
+
+    function linkPath(source,target){
+      var side = target.x >= source.x ? 1 : -1;
+      var sx = source.x + side*(source.w || nodeSize(source).w)/2;
+      var sy = source.y;
+      var tx = target.x - side*(target.w || nodeSize(target).w)/2;
+      var ty = target.y;
+      var dx = Math.max(60,Math.abs(tx-sx)*.44);
+      return "M "+sx+" "+sy+" C "+(sx+side*dx)+" "+sy+", "+(tx-side*dx)+" "+ty+", "+tx+" "+ty;
+    }
+
+    function toggleNode(node){
+      if(!node || !node.children || !node.children.length) return;
+      if(expanded.has(node.id)) expanded.delete(node.id);
+      else expanded.add(node.id);
+      render();
+    }
+
+    function selectNode(node){
+      selected = node;
+      panel.classList.add("open");
+      render();
+    }
+
+    function updatePanel(){
+      if(!selected){
+        panel.classList.remove("open");
+        return;
+      }
+
+      panelTitle.textContent = selected.name;
+      panelDepth.textContent = selected.depth === 0 ? "Root topic" : "Level "+selected.depth;
+      panelDescription.textContent = selected.description || "Part of "+(selected.parent ? selected.parent.name : "WordPress Development")+".";
+      panelPath.textContent = selected.path;
+      panelColor.style.background = selected.color;
+      toggleSelected.textContent = selected.children && selected.children.length
+        ? (expanded.has(selected.id) ? "Close branch" : "Open branch")
+        : "No children";
+      toggleSelected.disabled = !(selected.children && selected.children.length);
+
+      if(selected.children && selected.children.length){
+        childrenBox.style.display = "block";
+        childrenBox.innerHTML = '<div class="children-label">Children</div>' + selected.children.map(function(child){
+          return '<button type="button" class="child-btn" data-child="'+escapeHTML(child.id)+'">'+escapeHTML(child.name)+'</button>';
+        }).join("");
+
+        childrenBox.querySelectorAll("[data-child]").forEach(function(button){
+          button.addEventListener("click",function(){
+            var child = nodesById.get(button.getAttribute("data-child"));
+            expandAncestors(child);
+            render();
+            window.setTimeout(function(){
+              selectNode(child);
+              centerNode(child);
+            },0);
+          });
+        });
+      }else{
+        childrenBox.style.display = "none";
+        childrenBox.innerHTML = "";
+      }
+    }
+
+    function expandAncestors(node){
+      var current = node ? node.parent : null;
+      while(current){
+        expanded.add(current.id);
+        current = current.parent;
+      }
+    }
+
+    function openToDepth(depth){
+      expanded.clear();
+      allNodes.forEach(function(node){
+        if(node.depth < depth && node.children && node.children.length) expanded.add(node.id);
+      });
+      render();
+      window.setTimeout(fitMap,0);
+    }
+
+    function collapseAll(){
+      expanded.clear();
+      expanded.add(TREE.id);
+      selected = null;
+      render();
+      window.setTimeout(fitMap,0);
+    }
+
+    function bounds(){
+      if(!currentVisible.length) return {minX:-100,maxX:100,minY:-100,maxY:100};
+      var minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+      currentVisible.forEach(function(node){
+        var s=nodeSize(node);
+        minX=Math.min(minX,node.x-s.w/2-25);
+        maxX=Math.max(maxX,node.x+s.w/2+25);
+        minY=Math.min(minY,node.y-s.h/2-25);
+        maxY=Math.max(maxY,node.y+s.h/2+25);
+      });
+      return {minX:minX,maxX:maxX,minY:minY,maxY:maxY};
+    }
+
+    function applyTransform(){
+      viewport.setAttribute("transform","translate("+transform.x+" "+transform.y+") scale("+transform.scale+")");
+      zoomLabel.textContent = Math.round(transform.scale*100)+"%";
+      updateMinimap();
+    }
+
+    function fitMap(){
+      var box = bounds();
+      var rect = stage.getBoundingClientRect();
+      var w = Math.max(1,box.maxX-box.minX);
+      var h = Math.max(1,box.maxY-box.minY);
+      var pad = Math.min(100,Math.max(38,rect.width*.06));
+      var scale = Math.min((rect.width-pad*2)/w,(rect.height-pad*2)/h,1.2);
+      scale = Math.max(.18,Math.min(2.5,scale));
+      transform.scale = scale;
+      transform.x = rect.width/2 - ((box.minX+box.maxX)/2)*scale;
+      transform.y = rect.height/2 - ((box.minY+box.maxY)/2)*scale;
+      applyTransform();
+    }
+
+    function centerNode(node){
+      if(!node) return;
+      var rect = stage.getBoundingClientRect();
+      transform.x = rect.width/2 - node.x*transform.scale;
+      transform.y = rect.height/2 - node.y*transform.scale;
+      applyTransform();
+    }
+
+    function zoomAt(clientX,clientY,factor){
+      var rect = stage.getBoundingClientRect();
+      var sx = clientX-rect.left;
+      var sy = clientY-rect.top;
+      var old = transform.scale;
+      var next = Math.max(.18,Math.min(3.2,old*factor));
+      var wx = (sx-transform.x)/old;
+      var wy = (sy-transform.y)/old;
+      transform.scale = next;
+      transform.x = sx-wx*next;
+      transform.y = sy-wy*next;
+      applyTransform();
+    }
+
+    function zoomCenter(factor){
+      var rect=stage.getBoundingClientRect();
+      zoomAt(rect.left+rect.width/2,rect.top+rect.height/2,factor);
+    }
+
+    function startNodeDrag(event,node,element){
+      event.stopPropagation();
+      dragMoved=false;
+      var startX=event.clientX;
+      var startY=event.clientY;
+      var original=positions[node.id] || {x:0,y:0};
+      dragNode={
+        pointerId:event.pointerId,
+        node:node,
+        element:element,
+        startX:startX,
+        startY:startY,
+        originalX:original.x,
+        originalY:original.y
+      };
+      element.setPointerCapture(event.pointerId);
+      element.classList.add("dragging");
+    }
+
+    function endNodeDrag(event){
+      if(!dragNode) return;
+      try{dragNode.element.releasePointerCapture(dragNode.pointerId)}catch(e){}
+      dragNode.element.classList.remove("dragging");
+      writeJSON("wp-mindmap:positions",positions);
+      dragNode=null;
+      window.setTimeout(function(){dragMoved=false},0);
+    }
+
+    stage.addEventListener("pointermove",function(event){
+      if(dragNode){
+        var dx=(event.clientX-dragNode.startX)/transform.scale;
+        var dy=(event.clientY-dragNode.startY)/transform.scale;
+        if(Math.abs(dx)>3 || Math.abs(dy)>3) dragMoved=true;
+        positions[dragNode.node.id]={
+          x:dragNode.originalX+dx,
+          y:dragNode.originalY+dy
+        };
+        updateGeometry();
+        return;
+      }
+
+      if(panState){
+        var dxp=event.clientX-panState.startX;
+        var dyp=event.clientY-panState.startY;
+        transform.x=panState.x+dxp;
+        transform.y=panState.y+dyp;
+        applyTransform();
+      }
+    });
+
+    stage.addEventListener("pointerup",function(event){
+      if(dragNode) endNodeDrag(event);
+      if(panState){
+        try{stage.releasePointerCapture(panState.pointerId)}catch(e){}
+        panState=null;
+        stage.classList.remove("panning");
+      }
+    });
+
+    stage.addEventListener("pointercancel",function(event){
+      if(dragNode) endNodeDrag(event);
+      panState=null;
+      stage.classList.remove("panning");
+    });
+
+    stage.addEventListener("pointerdown",function(event){
+      if(event.button !== 0) return;
+      if(event.target.closest && event.target.closest(".node")) return;
+      panState={
+        pointerId:event.pointerId,
+        startX:event.clientX,
+        startY:event.clientY,
+        x:transform.x,
+        y:transform.y
+      };
+      stage.setPointerCapture(event.pointerId);
+      stage.classList.add("panning");
+    });
+
+    stage.addEventListener("wheel",function(event){
+      event.preventDefault();
+      zoomAt(event.clientX,event.clientY,event.deltaY<0?1.12:.89);
+    },{passive:false});
+
+    function searchNodes(query){
+      var q=query.trim().toLowerCase();
+      if(!q) return [];
+      return allNodes.filter(function(node){
+        return (node.name+" "+node.description+" "+node.path).toLowerCase().indexOf(q)!==-1;
+      }).slice(0,9);
+    }
+
+    function renderSearch(){
+      var matches=searchNodes(search.value);
+      if(!search.value.trim()){
+        searchResults.classList.remove("open");
+        searchResults.innerHTML="";
+        return;
+      }
+
+      searchResults.innerHTML = matches.length ? matches.map(function(node){
+        return '<button type="button" class="result" data-result="'+escapeHTML(node.id)+'"><strong>'+escapeHTML(node.name)+'</strong><span>'+escapeHTML(node.path)+'</span></button>';
+      }).join("") : '<div class="result"><strong>No matching topic</strong></div>';
+
+      searchResults.classList.add("open");
+
+      searchResults.querySelectorAll("[data-result]").forEach(function(button){
+        button.addEventListener("click",function(){
+          var node=nodesById.get(button.getAttribute("data-result"));
+          expandAncestors(node);
+          searchResults.classList.remove("open");
+          search.value="";
+          render();
+          window.setTimeout(function(){
+            selected=node;
+            render();
+            centerNode(node);
+          },0);
+        });
+      });
+    }
+
+    search.addEventListener("input",renderSearch);
+    search.addEventListener("focus",renderSearch);
+
+    document.addEventListener("pointerdown",function(event){
+      if(!event.target.closest || !event.target.closest(".searchbox")) searchResults.classList.remove("open");
+    });
+
+    document.addEventListener("keydown",function(event){
+      var typing=/input|textarea|select/i.test(document.activeElement.tagName);
+      if(event.key==="/" && !typing){
+        event.preventDefault();
+        search.focus();
+      }
+      if(event.key==="Escape"){
+        searchResults.classList.remove("open");
+        if(document.activeElement===search){
+          search.value="";
+          search.blur();
+        }else{
+          selected=null;
+          render();
+        }
+      }
+    });
+
+    document.getElementById("applyDepth").addEventListener("click",function(){
+      openToDepth(Number(document.getElementById("depthSelect").value));
+    });
+    document.getElementById("collapseAll").addEventListener("click",collapseAll);
+    document.getElementById("zoomIn").addEventListener("click",function(){zoomCenter(1.2)});
+    document.getElementById("zoomOut").addEventListener("click",function(){zoomCenter(.84)});
+    document.getElementById("fit").addEventListener("click",fitMap);
+    document.getElementById("resetLayout").addEventListener("click",function(){
+      positions={};
+      writeJSON("wp-mindmap:positions",positions);
+      render();
+      window.setTimeout(fitMap,0);
+    });
+    document.getElementById("closePanel").addEventListener("click",function(){
+      selected=null;
+      render();
+    });
+    toggleSelected.addEventListener("click",function(){
+      if(selected) toggleNode(selected);
+    });
+    document.getElementById("focusSelected").addEventListener("click",function(){
+      if(selected) centerNode(selected);
+    });
+
+    function updateMinimap(){
+      if(!currentVisible.length) return;
+      var miniRect=minimap.getBoundingClientRect();
+      if(!miniRect.width || !miniRect.height) return;
+
+      var box=bounds();
+      var pad=10;
+      var bw=Math.max(1,box.maxX-box.minX);
+      var bh=Math.max(1,box.maxY-box.minY);
+      var s=Math.min((miniRect.width-pad*2)/bw,(miniRect.height-pad*2)/bh);
+      var ox=(miniRect.width-bw*s)/2-box.minX*s;
+      var oy=(miniRect.height-bh*s)/2-box.minY*s;
+
+      minimap.setAttribute("viewBox","0 0 "+miniRect.width+" "+miniRect.height);
+      minimap.replaceChildren();
+
+      currentLinks.forEach(function(link){
+        var line=createSVG("line",{
+          x1:link.source.x*s+ox,
+          y1:link.source.y*s+oy,
+          x2:link.target.x*s+ox,
+          y2:link.target.y*s+oy,
+          stroke:link.target.color,
+          "stroke-width":1,
+          opacity:.35
+        });
+        minimap.appendChild(line);
+      });
+
+      currentVisible.forEach(function(node){
+        var dot=createSVG("circle",{
+          cx:node.x*s+ox,
+          cy:node.y*s+oy,
+          r:node.depth===0?3:2,
+          fill:node.color
+        });
+        minimap.appendChild(dot);
+      });
+
+      var stageRect=stage.getBoundingClientRect();
+      var worldLeft=(0-transform.x)/transform.scale;
+      var worldTop=(0-transform.y)/transform.scale;
+      var worldRight=(stageRect.width-transform.x)/transform.scale;
+      var worldBottom=(stageRect.height-transform.y)/transform.scale;
+
+      var viewportRect=createSVG("rect",{
+        x:worldLeft*s+ox,
+        y:worldTop*s+oy,
+        width:(worldRight-worldLeft)*s,
+        height:(worldBottom-worldTop)*s,
+        fill:"none",
+        stroke:"#171717",
+        "stroke-width":1,
+        rx:2,
+        opacity:.45
+      });
+      minimap.appendChild(viewportRect);
+    }
+
+    window.addEventListener("resize",function(){
+      window.setTimeout(function(){fitMap()},60);
+    });
+
+    renderLegend();
+    render();
+    window.setTimeout(fitMap,40);
+  </script>
+</body>
+</html>
